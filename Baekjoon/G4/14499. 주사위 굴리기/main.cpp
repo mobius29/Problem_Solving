@@ -85,7 +85,7 @@ void solve(int dir) {
   auto [x, y] = pos;
   int nx = x + dx[dir], ny = y + dy[dir];
 
-  if (nx < 0 || ny < 0 || nx >= N || ny >= N) return;
+  if (nx < 0 || ny < 0 || nx >= N || ny >= M) return;
   pos = {nx, ny};
 
   rotate(dir);
