@@ -1,131 +1,133 @@
 // https://bamgoesn.github.io/rust-ps-md/misc/fastio.html
-#![no_main]
+use std::io::Write;
+use std::str::SplitAsciiWhitespace;
+use std::{fmt, io};
 
-#[no_mangle]
-fn main() -> i32 {
-    // FastIO
-    use fastio::*;
-    let input_str = get_input();
-    let mut sc = Tokenizer::new(input_str, |s| s.split_ascii_whitespace());
-    use std::io::{stdout, BufWriter, Write};
-    let stdout = stdout();
-    let wr = &mut BufWriter::new(stdout.lock());
+fn read() -> Tokenizer<SplitAsciiWhitespace<'static>> {
+    let buf = io::read_to_string(io::stdin()).unwrap();
+    let str: &'static str = Box::leak(buf.into_boxed_str());
 
-    // FastIO Macros
-    macro_rules! out { ($($arg:tt)*) => { write!(wr, $($arg)*).ok(); }; }
-    macro_rules! outln { ($($arg:tt)*) => { writeln!(wr, $($arg)*).ok(); }; }
-
-    // Main
-
-    wr.flush().unwrap();
-    0
+    Tokenizer::new(str, |s| s.split_ascii_whitespace())
 }
 
-#[allow(unused)]
-mod fastio {
-    use std::{fmt, io, num::*, slice::*, str::*};
+fn main() {
+    // read
 
-    #[link(name = "c")]
-    extern "C" {}
+    // read all line and tokenize by ascii white space
+    let line = &mut read();
 
-    pub fn get_input() -> &'static str {
-        let buf = io::read_to_string(io::stdin()).unwrap();
-        Box::leak(buf.into_boxed_str())
+    let n: usize = line.next(); // read one value
+    let (m, k): (u32, u32) = line.next(); // read tuple
+    let text: &str = line.next_str(); // read string
+    let arr: Vec<u64> = line.next_iter().take(n).collect(); // read vector
+
+    // solve
+
+    // write
+    let stdout = io::stdout();
+    let buf_write = &mut io::BufWriter::new(stdout.lock());
+
+    // write with line break
+    writeln!(buf_write, "{}", n).ok();
+    writeln!(buf_write, "{}, {}", m, k).ok();
+    writeln!(buf_write, "{}", text).ok();
+
+    for i in 0..arr.len() {
+        // write without line break
+        write!(buf_write, "{} ", arr[i]).ok();
     }
 
-    pub enum InputError<'t> {
-        InputExhaust,
-        ParseError(&'t str),
-    }
-    use InputError::*;
+    // flush buffer
+    buf_write.flush().unwrap();
+}
 
-    impl<'t> fmt::Debug for InputError<'t> {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            match self {
-                InputExhaust => f.debug_struct("InputExhaust").finish(),
-                ParseError(s) => f.debug_struct("ParseError").field("str", s).finish(),
-            }
+// Define Errors For Input
+pub enum InputError<'t> {
+    InputExhaust,
+    ParseError(&'t str),
+}
+
+impl<'t> fmt::Debug for InputError<'t> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            InputError::InputExhaust => f.debug_struct("InputExhaust").finish(),
+            InputError::ParseError(s) => f.debug_struct("ParseError").field("str", s).finish(),
         }
     }
+}
 
-    pub trait Atom: Sized {
-        fn parse_from(s: &str) -> Result<Self, InputError>;
-    }
+// Implements macros for parse string to certain type
+pub trait Atom: Sized {
+    fn parse_from(s: &str) -> Result<Self, InputError>;
+}
 
-    pub trait IterParse: Sized {
-        fn parse_from<'s, 't: 's, It>(it: &'s mut It) -> Result<Self, InputError<'t>>
-        where
-            It: Iterator<Item = &'t str>;
-    }
-
-    macro_rules! impl_trait_for_fromstr {
-        ($($t:ty) *) => { $(
-            impl Atom for $t { fn parse_from(s: &str) -> Result<Self, InputError> { s.parse().map_err(|_| ParseError(s)) } }
-            impl IterParse for $t {
-                fn parse_from<'s, 't: 's, It>(it: &'s mut It) -> Result<Self, InputError<'t>> where It: Iterator<Item = &'t str> {
-                    it.next().map_or( Err(InputExhaust), <Self as Atom>::parse_from )
-                }
-            }
-        )* };
-    }
-
-    impl_trait_for_fromstr!(bool char String);
-    impl_trait_for_fromstr!(f32 f64 i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize);
-    impl_trait_for_fromstr!(NonZeroI8 NonZeroI16 NonZeroI32 NonZeroI64 NonZeroI128 NonZeroIsize);
-    impl_trait_for_fromstr!(NonZeroU8 NonZeroU16 NonZeroU32 NonZeroU64 NonZeroU128 NonZeroUsize);
-
-    macro_rules! impl_iterparse_for_tuple {
-        ($($t:ident) *) => {
-            impl<$($t),*> IterParse for ($($t),*) where $($t: IterParse),* {
-                fn parse_from<'s, 't: 's, It>(it: &'s mut It) -> Result<Self, InputError<'t>> where It: Iterator<Item = &'t str> {
-                    Ok(( $($t::parse_from(it)?),* ))
-                }
-            }
-        };
-    }
-
-    impl_iterparse_for_tuple!();
-    impl_iterparse_for_tuple!(A B);
-    impl_iterparse_for_tuple!(A B C);
-    impl_iterparse_for_tuple!(A B C D);
-    impl_iterparse_for_tuple!(A B C D E);
-    impl_iterparse_for_tuple!(A B C D E F);
-    impl_iterparse_for_tuple!(A B C D E F G);
-    impl_iterparse_for_tuple!(A B C D E F G H);
-    impl_iterparse_for_tuple!(A B C D E F G H I);
-    impl_iterparse_for_tuple!(A B C D E F G H I J);
-    impl_iterparse_for_tuple!(A B C D E F G H I J K);
-    impl_iterparse_for_tuple!(A B C D E F G H I J K L);
-    impl_iterparse_for_tuple!(A B C D E F G H I J K L M);
-
-    pub struct Tokenizer<It> {
-        it: It,
-    }
-
-    impl<'arg, 'str: 'arg, It> Tokenizer<It> {
-        pub fn new(s: &'str str, split: impl FnOnce(&'arg str) -> It) -> Self {
-            Self { it: split(s) }
-        }
-    }
-
-    impl<'t, It> Tokenizer<It>
+trait IterParse: Sized {
+    fn parse_from<'s, 't: 's, It>(it: &'s mut It) -> Result<Self, InputError<'t>>
     where
-        It: Iterator<Item = &'t str>,
-    {
-        pub fn next<T: IterParse>(&mut self) -> T {
-            T::parse_from(&mut self.it).unwrap()
+        It: Iterator<Item = &'t str>;
+}
+
+macro_rules! impl_trait_for_fromstr {
+    ($($t:ty) *) => { $(
+        impl Atom for $t {
+            fn parse_from(s: &str) -> Result<Self, InputError> {
+                s.parse().map_err(|_| InputError::ParseError(s))
+            }
         }
-        pub fn next_str(&mut self) -> &'t str {
-            self.it.next().unwrap()
+
+        impl IterParse for $t {
+            fn parse_from<'s, 't: 's, It>(it: &'s mut It) -> Result<Self, InputError<'t>> where It: Iterator<Item = &'t str> {
+                it.next().map_or( Err(InputError::InputExhaust), <Self as Atom>::parse_from )
+            }
         }
-        pub fn next_ok<T: IterParse>(&mut self) -> Result<T, InputError<'t>> {
-            T::parse_from(&mut self.it)
+    )* };
+}
+
+impl_trait_for_fromstr!(bool char String);
+impl_trait_for_fromstr!(i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize f32 f64);
+
+macro_rules! impl_iterparse_for_tuple {
+    ($($t:ident) *) => {
+        impl<$($t),*> IterParse for ($($t),*) where $($t: IterParse),* {
+            fn parse_from<'s, 't: 's, It>(it: &'s mut It) -> Result<Self, InputError<'t>> where It: Iterator<Item = &'t str> {
+                Ok(( $($t::parse_from(it)?),* ))
+            }
         }
-        pub fn next_str_ok(&mut self) -> Option<&'t str> {
-            self.it.next()
-        }
-        pub fn next_iter<T: IterParse>(&mut self) -> impl Iterator<Item = T> + '_ {
-            std::iter::repeat_with(move || self.next_ok().ok()).map_while(|x| x)
-        }
+    };
+}
+
+impl_iterparse_for_tuple!(A B);
+impl_iterparse_for_tuple!(A B C);
+impl_iterparse_for_tuple!(A B C D);
+
+// Implements Tokenizer for split string line to variables
+struct Tokenizer<It> {
+    it: It,
+}
+
+impl<'arg, 'str: 'arg, It> Tokenizer<It> {
+    pub fn new(s: &'str str, split: impl FnOnce(&'arg str) -> It) -> Self {
+        Self { it: split(s) }
+    }
+}
+
+impl<'t, It> Tokenizer<It>
+where
+    It: Iterator<Item = &'t str>,
+{
+    pub fn next<T: IterParse>(&mut self) -> T {
+        T::parse_from(&mut self.it).unwrap()
+    }
+
+    pub fn next_str(&mut self) -> &'t str {
+        self.it.next().unwrap()
+    }
+
+    pub fn next_ok<T: IterParse>(&mut self) -> Result<T, InputError<'t>> {
+        T::parse_from(&mut self.it)
+    }
+
+    pub fn next_iter<T: IterParse>(&mut self) -> impl Iterator<Item = T> + '_ {
+        std::iter::repeat_with(move || self.next_ok().ok()).map_while(|x| x)
     }
 }
