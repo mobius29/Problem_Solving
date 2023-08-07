@@ -1,0 +1,118 @@
+use std::io::Write;
+use std::str::SplitAsciiWhitespace;
+use std::{fmt, io};
+
+fn read() -> Tokenizer<SplitAsciiWhitespace<'static>> {
+    let buf = io::read_to_string(io::stdin()).unwrap();
+    let str: &'static str = Box::leak(buf.into_boxed_str());
+
+    Tokenizer::new(str, |s| s.split_ascii_whitespace())
+}
+
+fn main() {
+    let line = &mut read();
+
+    let str: &str = line.next_str();
+    let mut char_count: Vec<u32> = vec![0; 26];
+
+    for c in str.chars() {
+        let alphabet_position = c.to_ascii_uppercase() as u8 - 65;
+        char_count[alphabet_position as usize] += 1;
+    }
+
+    let max_count = char_count.iter().max().unwrap();
+    let mut results: Vec<u8> = Vec::new();
+    for i in 0..26 {
+        if char_count[i] == *max_count {
+            results.push(i as u8);
+        }
+    }
+    let answer = if results.len() > 1 {
+        '?'
+    } else {
+        (results[0] + 65) as char
+    };
+
+    let stdout = io::stdout();
+    let buf_write = &mut io::BufWriter::new(stdout.lock());
+
+    writeln!(buf_write, "{}", answer).ok();
+
+    buf_write.flush().unwrap();
+}
+
+pub enum InputError<'t> {
+    InputExhaust,
+    ParseError(&'t str),
+}
+
+impl<'t> fmt::Debug for InputError<'t> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            InputError::InputExhaust => f.debug_struct("InputExhaust").finish(),
+            InputError::ParseError(s) => f.debug_struct("ParseError").field("str", s).finish(),
+        }
+    }
+}
+
+pub trait Atom: Sized {
+    fn parse_from(s: &str) -> Result<Self, InputError>;
+}
+
+trait IterParse: Sized {
+    fn parse_from<'s, 't: 's, It>(it: &'s mut It) -> Result<Self, InputError<'t>>
+    where
+        It: Iterator<Item = &'t str>;
+}
+
+macro_rules! impl_trait_for_fromstr {
+    ($($t:ty) *) => { $(
+        impl Atom for $t {
+            fn parse_from(s: &str) -> Result<Self, InputError> {
+                s.parse().map_err(|_| InputError::ParseError(s))
+            }
+        }
+
+        impl IterParse for $t {
+            fn parse_from<'s, 't: 's, It>(it: &'s mut It) -> Result<Self, InputError<'t>> where It: Iterator<Item = &'t str> {
+                it.next().map_or( Err(InputError::InputExhaust), <Self as Atom>::parse_from )
+            }
+        }
+    )* };
+}
+
+impl_trait_for_fromstr!(bool char String);
+impl_trait_for_fromstr!(i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize f32 f64);
+
+macro_rules! impl_iterparse_for_tuple {
+    ($($t:ident) *) => {
+        impl<$($t),*> IterParse for ($($t),*) where $($t: IterParse),* {
+            fn parse_from<'s, 't: 's, It>(it: &'s mut It) -> Result<Self, InputError<'t>> where It: Iterator<Item = &'t str> {
+                Ok(( $($t::parse_from(it)?),* ))
+            }
+        }
+    };
+}
+
+impl_iterparse_for_tuple!(A B);
+impl_iterparse_for_tuple!(A B C);
+impl_iterparse_for_tuple!(A B C D);
+
+struct Tokenizer<It> {
+    it: It,
+}
+
+impl<'arg, 'str: 'arg, It> Tokenizer<It> {
+    pub fn new(s: &'str str, split: impl FnOnce(&'arg str) -> It) -> Self {
+        Self { it: split(s) }
+    }
+}
+
+impl<'t, It> Tokenizer<It>
+where
+    It: Iterator<Item = &'t str>,
+{
+    pub fn next_str(&mut self) -> &'t str {
+        self.it.next().unwrap()
+    }
+}
