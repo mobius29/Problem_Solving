@@ -13,22 +13,21 @@ fn read() -> Tokenizer<SplitAsciiWhitespace<'static>> {
 fn main() {
     let line = &mut read();
 
-    let n: u32 = line.next();
+    let mut unique_numbers = vec![0; 5];
+    for i in 0..5 {
+        let number: i32 = line.next();
+        unique_numbers[i] = number;
+    }
+
+    let squared_sum = unique_numbers
+        .into_iter()
+        .fold(0, |acc, num| acc + (num * num));
+    let answer = squared_sum % 10;
 
     let stdout = io::stdout();
     let buf_write = &mut io::BufWriter::new(stdout.lock());
 
-    for i in 0..n {
-        for _j in 1..(n - i) {
-            write!(buf_write, " ").ok();
-        }
-
-        for _j in 0..=i {
-            write!(buf_write, "*").ok();
-        }
-
-        writeln!(buf_write).ok();
-    }
+    writeln!(buf_write, "{}", answer).ok();
 
     buf_write.flush().unwrap();
 }
@@ -91,6 +90,7 @@ macro_rules! impl_iterparse_for_tuple {
 impl_iterparse_for_tuple!(A B);
 impl_iterparse_for_tuple!(A B C);
 impl_iterparse_for_tuple!(A B C D);
+impl_iterparse_for_tuple!(A B C D E);
 
 // Implements Tokenizer for split string line to variables
 struct Tokenizer<It> {
